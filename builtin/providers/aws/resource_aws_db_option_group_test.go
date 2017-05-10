@@ -49,7 +49,7 @@ func TestAccAWSDBOptionGroup_namePrefix(t *testing.T) {
 					testAccCheckAWSDBOptionGroupExists("aws_db_option_group.test", &v),
 					testAccCheckAWSDBOptionGroupAttributes(&v),
 					resource.TestMatchResourceAttr(
-						"aws_db_option_group.test", "name", regexp.MustCompile("^tf-TEST-")),
+						"aws_db_option_group.test", "name", regexp.MustCompile("^tf-test-")),
 				),
 			},
 		},
