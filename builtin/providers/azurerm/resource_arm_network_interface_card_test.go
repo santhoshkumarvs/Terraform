@@ -116,7 +116,7 @@ func TestAccAzureRMNetworkInterface_withTags(t *testing.T) {
 	})
 }
 
-func TestAccAzureRMNetworkInterface_ug7986(t *testing.T) {
+func TestAccAzureRMNetworkInterface_bug7986(t *testing.T) {
 	rInt := acctest.RandInt()
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -598,5 +598,5 @@ resource "azurerm_network_interface" "test2" {
     environment = "staging"
   }
 }
-`, rInt, rInt, rInt, rInt, rInt)
+`, rInt, rInt, rInt, rInt, rInt, rInt)
 }
