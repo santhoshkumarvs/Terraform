@@ -445,5 +445,5 @@ resource "azurerm_subnet" "second" {
   virtual_network_name = "${azurerm_virtual_network.test.name}"
   address_prefix       = "10.0.1.0/24"
   route_table_id       = "${azurerm_route_table.second.id}"
-}`, rInt)
+}`, rInt, rInt, rInt, rInt, rInt, rInt, rInt, rInt)
 }
