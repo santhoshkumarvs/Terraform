@@ -389,7 +389,6 @@ resource "azurerm_route" "route_a" {
 }`, rInt, rInt, rInt, rInt, rInt, rInt, rInt)
 }
 
-
 func testAccAzureRMSubnet_bug7986(rInt int) string {
 	return fmt.Sprintf(`
 resource "azurerm_resource_group" "test" {

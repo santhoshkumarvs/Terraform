@@ -493,7 +493,6 @@ resource "azurerm_network_interface" "test2" {
 `, rInt)
 }
 
-
 func testAccAzureRMNetworkInterface_bug7986(rInt int) string {
 	return fmt.Sprintf(`
 resource "azurerm_resource_group" "test" {
