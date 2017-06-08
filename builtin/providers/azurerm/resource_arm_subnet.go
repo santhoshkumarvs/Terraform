@@ -77,9 +77,6 @@ func resourceArmSubnetCreate(d *schema.ResourceData, meta interface{}) error {
 	resGroup := d.Get("resource_group_name").(string)
 	addressPrefix := d.Get("address_prefix").(string)
 
-	armMutexKV.Lock(name)
-	defer armMutexKV.Unlock(name)
-
 	armMutexKV.Lock(vnetName)
 	defer armMutexKV.Unlock(vnetName)
 
