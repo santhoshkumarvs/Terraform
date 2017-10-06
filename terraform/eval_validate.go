@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/configschema"
 	"github.com/mitchellh/mapstructure"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // EvalValidateError is the error structure returned if there were
@@ -22,6 +24,16 @@ func (e *EvalValidateError) Error() string {
 // the count of a resource.
 type EvalValidateCount struct {
 	Resource *config.Resource
+}
+
+// configschema used to decode our RawConfig
+var evalValidateCountSchema = &configschema.Block{
+	Attributes: map[string]*configschema.Attribute{
+		"count": {
+			Type:     cty.String, // currently other code expects a string, which it then parses
+			Optional: true,
+		},
+	},
 }
 
 // TODO: test

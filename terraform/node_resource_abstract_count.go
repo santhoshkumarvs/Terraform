@@ -30,7 +30,10 @@ func (n *NodeAbstractCountResource) EvalTree() EvalNode {
 			//
 			// With the interpolated count, we can then DynamicExpand
 			// into the proper number of instances.
-			&EvalInterpolate{Config: n.Config.RawCount},
+			&EvalInterpolate{
+				Config: n.Config.RawCount,
+				Schema: &evalValidateCountSchema,
+			},
 
 			// Check if the count is computed
 			evalCountCheckComputed,

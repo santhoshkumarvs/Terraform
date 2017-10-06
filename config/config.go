@@ -220,7 +220,12 @@ func (r *Module) Id() string {
 // Count returns the count of this resource.
 func (r *Resource) Count() (int, error) {
 	raw := r.RawCount.Value()
-	count, ok := r.RawCount.Value().(string)
+
+	if raw == nil {
+		return 1, nil
+	}
+
+	count, ok := raw.(string)
 	if !ok {
 		return 0, fmt.Errorf(
 			"expected count to be a string or int, got %T", raw)
