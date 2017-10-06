@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -11,8 +12,10 @@ import (
 	"github.com/zclconf/go-cty/cty/convert"
 
 	hcl2 "github.com/hashicorp/hcl2/hcl"
+	hcl2dec "github.com/hashicorp/hcl2/hcldec"
 	"github.com/hashicorp/hil"
 	"github.com/hashicorp/hil/ast"
+	"github.com/hashicorp/terraform/config/configschema"
 	"github.com/mitchellh/copystructure"
 	"github.com/mitchellh/reflectwalk"
 )
@@ -167,7 +170,15 @@ func (r *RawConfig) Config() map[string]interface{} {
 // Any prior calls to Interpolate are replaced with this one.
 //
 // If a variable key is missing, this will panic.
+//
+// This method may be used only if RequiresSchema returns false. Otherwise,
+// it will return an error.
 func (r *RawConfig) Interpolate(vs map[string]ast.Variable) error {
+	if r.Body != nil {
+		// Describing the problem here from the end-users perspective
+		return errors.New("this feature is not yet compatible with the experimental HCL2 support")
+	}
+
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -182,6 +193,66 @@ func (r *RawConfig) Interpolate(vs map[string]ast.Variable) error {
 
 		return result.Value, nil
 	})
+}
+
+// RequiresSchema returns true if interpolation of this object must be done
+// using InterpolateWithSchema, or false if Interpolate should be used.
+//
+// This is part of the temporary concurrent support for both HCL and HCL2,
+// with the latter requiring a schema for interpolation.
+func (r *RawConfig) RequiresSchema() bool {
+	if r == nil {
+		return false
+	}
+	return r.Body != nil
+}
+
+// InterpolateWithSchema uses the given variables and schema to evaluate
+// this raw configuration.
+//
+// This method should be used only if RequiresSchema returns true. Otherwise,
+// use Interpolate.
+func (r *RawConfig) InterpolateWithSchema(schema *configschema.Block, vs map[string]ast.Variable) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if !r.RequiresSchema() {
+		return r.Interpolate(vs)
+	}
+
+	ctx := &hcl2.EvalContext{
+		Variables: map[string]cty.Value{},
+		Functions: hcl2InterpolationFuncs(),
+	}
+
+	// TODO: Convert "vs" into ctx.Variables
+
+	spec := schema.DecoderSpec()
+	val, diags := hcl2dec.Decode(r.Body, spec, ctx)
+
+	// We only return diags if it has errors, since we don't want to accidentally
+	// treat isolated warnings as errors. This means that we can return warnings
+	// only when accompanied by at least one error.
+	if diags.HasErrors() {
+		return diags
+	}
+
+	if !val.Type().IsObjectType() {
+		// should never happen, because a configschema.Block always decodes to an object
+		return fmt.Errorf("configuration decoding produced %s, rather than object as expected", val.Type())
+	}
+
+	r.config = configValueFromHCL2(val).(map[string]interface{})
+	r.unknownKeys = nil
+	it := val.ElementIterator()
+	for it.Next() {
+		k, v := it.Element()
+		if !v.IsKnown() {
+			r.unknownKeys = append(r.unknownKeys, k.AsString())
+		}
+	}
+
+	return nil
 }
 
 // Merge merges another RawConfig into this one (overriding any conflicting
