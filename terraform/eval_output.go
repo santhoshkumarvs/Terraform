@@ -5,6 +5,8 @@ import (
 	"log"
 
 	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/configschema"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // EvalDeleteOutput is an EvalNode implementation that deletes an output
@@ -45,11 +47,21 @@ type EvalWriteOutput struct {
 	ContinueOnErr bool
 }
 
+// configschema used to decode our RawConfig
+var evalOutputConfigSchema = &configschema.Block{
+	Attributes: map[string]*configschema.Attribute{
+		"value": {
+			Type:     cty.DynamicPseudoType,
+			Required: true,
+		},
+	},
+}
+
 // TODO: test
 func (n *EvalWriteOutput) Eval(ctx EvalContext) (interface{}, error) {
 	// This has to run before we have a state lock, since interpolation also
 	// reads the state
-	cfg, err := ctx.Interpolate(n.Value, nil)
+	cfg, err := ctx.Interpolate(n.Value, nil, evalOutputConfigSchema)
 	// handle the error after we have the module from the state
 
 	state, lock := ctx.State()

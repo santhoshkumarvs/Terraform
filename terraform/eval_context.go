@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/configschema"
 )
 
 // EvalContext is the interface that is given to eval nodes to execute.
@@ -67,7 +68,7 @@ type EvalContext interface {
 	//
 	// The resource argument is optional. If given, it is the resource
 	// that is currently being acted upon.
-	Interpolate(*config.RawConfig, *Resource) (*ResourceConfig, error)
+	Interpolate(*config.RawConfig, *Resource, *configschema.Block) (*ResourceConfig, error)
 
 	// SetVariables sets the variables for the module within
 	// this context with the name n. This function call is additive:

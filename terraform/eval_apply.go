@@ -283,13 +283,13 @@ func (n *EvalApplyProvisioners) apply(ctx EvalContext, provs []*config.Provision
 		provisioner := ctx.Provisioner(prov.Type)
 
 		// Interpolate the provisioner config
-		provConfig, err := ctx.Interpolate(prov.RawConfig.Copy(), n.InterpResource)
+		provConfig, err := ctx.Interpolate(prov.RawConfig.Copy(), n.InterpResource, nil)
 		if err != nil {
 			return err
 		}
 
 		// Interpolate the conn info, since it may contain variables
-		connInfo, err := ctx.Interpolate(prov.ConnInfo.Copy(), n.InterpResource)
+		connInfo, err := ctx.Interpolate(prov.ConnInfo.Copy(), n.InterpResource, nil)
 		if err != nil {
 			return err
 		}

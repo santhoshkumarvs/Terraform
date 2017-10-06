@@ -3,7 +3,10 @@ package terraform
 import (
 	"fmt"
 
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/configschema"
 )
 
 // EvalLocal is an EvalNode implementation that evaluates the
@@ -14,8 +17,18 @@ type EvalLocal struct {
 	Value *config.RawConfig
 }
 
+// configschema used to decode our RawConfig
+var evalLocalConfigSchema = &configschema.Block{
+	Attributes: map[string]*configschema.Attribute{
+		"value": {
+			Type:     cty.DynamicPseudoType,
+			Required: true,
+		},
+	},
+}
+
 func (n *EvalLocal) Eval(ctx EvalContext) (interface{}, error) {
-	cfg, err := ctx.Interpolate(n.Value, nil)
+	cfg, err := ctx.Interpolate(n.Value, nil, evalLocalConfigSchema)
 	if err != nil {
 		return nil, fmt.Errorf("local.%s: %s", n.Name, err)
 	}

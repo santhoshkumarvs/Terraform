@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/configschema"
 )
 
 // MockEvalContext is a mock version of EvalContext that can be used
@@ -69,6 +70,7 @@ type MockEvalContext struct {
 	InterpolateCalled       bool
 	InterpolateConfig       *config.RawConfig
 	InterpolateResource     *Resource
+	InterpolateSchema       *configschema.Block
 	InterpolateConfigResult *ResourceConfig
 	InterpolateError        error
 
@@ -179,10 +181,12 @@ func (c *MockEvalContext) CloseProvisioner(n string) error {
 }
 
 func (c *MockEvalContext) Interpolate(
-	config *config.RawConfig, resource *Resource) (*ResourceConfig, error) {
+	config *config.RawConfig, resource *Resource, schema *configschema.Block,
+) (*ResourceConfig, error) {
 	c.InterpolateCalled = true
 	c.InterpolateConfig = config
 	c.InterpolateResource = resource
+	c.InterpolateSchema = schema
 	return c.InterpolateConfigResult, c.InterpolateError
 }
 

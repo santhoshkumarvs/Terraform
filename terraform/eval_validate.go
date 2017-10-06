@@ -41,7 +41,7 @@ func (n *EvalValidateCount) Eval(ctx EvalContext) (interface{}, error) {
 	var count int
 	var errs []error
 	var err error
-	if _, err := ctx.Interpolate(n.Resource.RawCount, nil); err != nil {
+	if _, err := ctx.Interpolate(n.Resource.RawCount, nil, evalValidateCountSchema); err != nil {
 		errs = append(errs, fmt.Errorf(
 			"Failed to interpolate count: %s", err))
 		goto RETURN

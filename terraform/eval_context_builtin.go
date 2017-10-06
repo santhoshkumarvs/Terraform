@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/configschema"
 )
 
 // BuiltinEvalContext is an EvalContext implementation that is used by
@@ -288,7 +289,13 @@ func (ctx *BuiltinEvalContext) CloseProvisioner(n string) error {
 }
 
 func (ctx *BuiltinEvalContext) Interpolate(
-	cfg *config.RawConfig, r *Resource) (*ResourceConfig, error) {
+	cfg *config.RawConfig, r *Resource, schema *configschema.Block,
+) (*ResourceConfig, error) {
+	if cfg.RequiresSchema() {
+		// Experimental HCL2 codepath
+		return ctx.interpolateWithSchema(cfg, r, schema)
+	}
+
 	if cfg != nil {
 		scope := &InterpolationScope{
 			Path:     ctx.Path(),
@@ -308,6 +315,34 @@ func (ctx *BuiltinEvalContext) Interpolate(
 
 	result := NewResourceConfig(cfg)
 	result.interpolateForce()
+	return result, nil
+}
+
+func (ctx *BuiltinEvalContext) interpolateWithSchema(
+	cfg *config.RawConfig, r *Resource, schema *configschema.Block,
+) (*ResourceConfig, error) {
+	if schema == nil {
+		// We actually catch this earlier on during eval and return a more decent
+		// error message, so this is just to be thorough.
+		return nil, fmt.Errorf("this configuration block requires a schema, but one is not available")
+	}
+
+	scope := &InterpolationScope{
+		Path:     ctx.Path(),
+		Resource: r,
+	}
+
+	vs, err := ctx.Interpolater.Values(scope, cfg.Variables)
+	if err != nil {
+		return nil, err
+	}
+
+	// Do the interpolation
+	if err := cfg.InterpolateWithSchema(schema, vs); err != nil {
+		return nil, err
+	}
+
+	result := NewResourceConfig(cfg)
 	return result, nil
 }
 
