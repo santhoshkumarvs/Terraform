@@ -6,6 +6,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
+	"github.com/hashicorp/terraform/config/hcl2shim"
 	"github.com/hashicorp/terraform/tfdiags"
 
 	hcl2 "github.com/hashicorp/hcl2/hcl"
@@ -545,7 +546,7 @@ func TestDetectVariablesHCL2(t *testing.T) {
 			var diags tfdiags.Diagnostics
 			expr, parseDiags := hcl2syntax.ParseExpression([]byte(test.Expr), "", hcl2.Pos{Line: 1, Column: 1})
 			diags = diags.Append(parseDiags)
-			body := hcl2SingleAttrBody{
+			body := hcl2shim.SingleAttrBody{
 				Name: "value",
 				Expr: expr,
 			}

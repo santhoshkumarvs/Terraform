@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/hil"
 	"github.com/hashicorp/hil/ast"
 	"github.com/hashicorp/terraform/config/configschema"
+	"github.com/hashicorp/terraform/config/hcl2shim"
 	"github.com/mitchellh/copystructure"
 	"github.com/mitchellh/reflectwalk"
 )
@@ -242,7 +243,7 @@ func (r *RawConfig) InterpolateWithSchema(schema *configschema.Block, vs map[str
 		return fmt.Errorf("configuration decoding produced %s, rather than object as expected", val.Type())
 	}
 
-	r.config = configValueFromHCL2(val).(map[string]interface{})
+	r.config = hcl2shim.ConfigValueFromHCL2(val).(map[string]interface{})
 	r.unknownKeys = nil
 	it := val.ElementIterator()
 	for it.Next() {
