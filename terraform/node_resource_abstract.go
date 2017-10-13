@@ -2,9 +2,11 @@ package terraform
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/configschema"
 	"github.com/hashicorp/terraform/dag"
 )
 
@@ -29,8 +31,9 @@ type NodeAbstractResource struct {
 	// interfaces if you're running those transforms, but also be explicitly
 	// set if you already have that information.
 
-	Config        *config.Resource // Config is the resource in the config
-	ResourceState *ResourceState   // ResourceState is the ResourceState for this
+	Config        *config.Resource    // Config is the resource in the config
+	Schema        *configschema.Block // Schema of configuration for this resource type or data source
+	ResourceState *ResourceState      // ResourceState is the ResourceState for this
 
 	Targets []ResourceAddress // Set from GraphNodeTargetable
 }
@@ -42,6 +45,39 @@ func (n *NodeAbstractResource) Name() string {
 // GraphNodeSubPath
 func (n *NodeAbstractResource) Path() []string {
 	return n.Addr.Path
+}
+
+// GraphNodeAttachSchema
+func (n *NodeAbstractResource) AttachSchema(schemas *Schemas) {
+	providerName := providerSchemaKey(n.ProvidedBy()[0])
+	providerSchemas := schemas.Providers[providerName]
+
+	if providerSchemas == nil {
+		log.Printf("[WARNING] No schemas available for provider %q", providerName)
+		return
+	}
+
+	var schemaMap map[string]*configschema.Block
+
+	switch n.Addr.Mode {
+	case config.ManagedResourceMode:
+		schemaMap = providerSchemas.ResourceTypes
+	case config.DataResourceMode:
+		schemaMap = providerSchemas.DataSources
+	default:
+		log.Printf("[WARNING] Don't know what kind of schema is needed for resource mode %s", n.Addr.Mode)
+		return
+	}
+
+	if schemaMap == nil {
+		log.Printf("[WARNING] No %s schemas available for provider %q", n.Addr.Mode, providerName)
+		return
+	}
+
+	n.Schema = schemaMap[n.Addr.Type]
+	if n.Schema == nil {
+		log.Printf("[WARNING] %s has no schema available", n.Addr.String())
+	}
 }
 
 // GraphNodeReferenceable

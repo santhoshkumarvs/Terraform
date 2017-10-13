@@ -120,6 +120,9 @@ func (b *ApplyGraphBuilder) Steps() []GraphTransformer {
 		// Add module variables
 		&ModuleVariableTransformer{Module: b.Module},
 
+		// Attach configuration schemas to nodes that need them
+		&AttachSchemaTransformer{Schemas: b.Schemas},
+
 		// Connect references so ordering is correct
 		&ReferenceTransformer{},
 

@@ -2,8 +2,10 @@ package terraform
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/configschema"
 	"github.com/hashicorp/terraform/dag"
 )
 
@@ -22,6 +24,7 @@ type NodeAbstractProvider struct {
 	// set if you already have that information.
 
 	Config *config.ProviderConfig
+	Schema *configschema.Block
 }
 
 func (n *NodeAbstractProvider) Name() string {
@@ -43,6 +46,22 @@ func (n *NodeAbstractProvider) RemoveIfNotTargeted() bool {
 	// We need to add this so that this node will be removed if
 	// it isn't targeted or a dependency of a target.
 	return true
+}
+
+// GraphNodeAttachSchema
+func (n *NodeAbstractProvider) AttachSchema(schemas *Schemas) {
+	providerName := providerSchemaKey(n.NameValue)
+	providerSchemas := schemas.Providers[providerName]
+
+	if providerSchemas == nil {
+		log.Printf("[WARNING] No schemas available for provider %q", providerName)
+		return
+	}
+
+	n.Schema = providerSchemas.Provider
+	if n.Schema == nil {
+		log.Printf("[WARNING] %s has no schema available", n.Name())
+	}
 }
 
 // GraphNodeReferencer

@@ -117,6 +117,9 @@ func (b *PlanGraphBuilder) Steps() []GraphTransformer {
 			Module: b.Module,
 		},
 
+		// Attach configuration schemas to nodes that need them
+		&AttachSchemaTransformer{Schemas: b.Schemas},
+
 		// Connect so that the references are ready for targeting. We'll
 		// have to connect again later for providers and so on.
 		&ReferenceTransformer{},
