@@ -77,7 +77,7 @@ func (n *NodeApplyableModuleVariable) References() []string {
 		prefix = modulePrefixStr(p)
 	}
 
-	result := ReferencesFromConfig(n.Value)
+	result := ReferencesFromConfig(n.Value, nil)
 	return modulePrefixList(result, prefix)
 }
 

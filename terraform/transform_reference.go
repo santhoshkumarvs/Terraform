@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform/config"
+	"github.com/hashicorp/terraform/config/configschema"
 	"github.com/hashicorp/terraform/dag"
 )
 
@@ -290,14 +291,39 @@ func ReferenceModulePath(p []string) []string {
 
 // ReferencesFromConfig returns the references that a configuration has
 // based on the interpolated variables in a configuration.
-func ReferencesFromConfig(c *config.RawConfig) []string {
+func ReferencesFromConfig(c *config.RawConfig, schema *configschema.Block) []string {
 	var result []string
+
+	if c.RequiresSchema() {
+		return referencesFromConfigHCL2(c, schema)
+	}
+
 	for _, v := range c.Variables {
 		if r := ReferenceFromInterpolatedVar(v); len(r) > 0 {
 			result = append(result, r...)
 		}
 	}
 
+	return result
+}
+
+// referencesFromConfigHCL2 is the variant of ReferencesFromConfig for the
+// HCL2 experimental codepath.
+func referencesFromConfigHCL2(c *config.RawConfig, schema *configschema.Block) []string {
+	var result []string
+
+	if schema == nil {
+		// We can't find references in HCL2 without the schema. Ideally we'd
+		// return some sort of error here, but a config with a missing schema
+		// will fail with an error at interpolation time, so we can safely
+		// ignore it here.
+		return result
+	}
+
+	vars, _ := config.DetectVariablesHCL2(c.Body, schema.DecoderSpec())
+	for _, v := range vars {
+		result = append(result, ReferenceFromInterpolatedVar(v)...)
+	}
 	return result
 }
 

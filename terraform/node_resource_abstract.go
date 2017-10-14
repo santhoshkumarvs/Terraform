@@ -129,12 +129,12 @@ func (n *NodeAbstractResource) References() []string {
 		// Grab all the references
 		var result []string
 		result = append(result, c.DependsOn...)
-		result = append(result, ReferencesFromConfig(c.RawCount)...)
-		result = append(result, ReferencesFromConfig(c.RawConfig)...)
+		result = append(result, ReferencesFromConfig(c.RawCount, evalValidateCountSchema)...)
+		result = append(result, ReferencesFromConfig(c.RawConfig, n.Schema)...)
 		for _, p := range c.Provisioners {
 			if p.When == config.ProvisionerWhenCreate {
-				result = append(result, ReferencesFromConfig(p.ConnInfo)...)
-				result = append(result, ReferencesFromConfig(p.RawConfig)...)
+				result = append(result, ReferencesFromConfig(p.ConnInfo, nil)...)
+				result = append(result, ReferencesFromConfig(p.RawConfig, nil)...)
 			}
 		}
 

@@ -70,7 +70,7 @@ func (n *NodeAbstractProvider) References() []string {
 		return nil
 	}
 
-	return ReferencesFromConfig(n.Config.RawConfig)
+	return ReferencesFromConfig(n.Config.RawConfig, n.Schema)
 }
 
 // GraphNodeProvider

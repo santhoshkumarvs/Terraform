@@ -44,7 +44,7 @@ func (n *NodeLocal) ReferenceableName() []string {
 // GraphNodeReferencer
 func (n *NodeLocal) References() []string {
 	var result []string
-	result = append(result, ReferencesFromConfig(n.Config.RawConfig)...)
+	result = append(result, ReferencesFromConfig(n.Config.RawConfig, evalLocalConfigSchema)...)
 	for _, v := range result {
 		split := strings.Split(v, "/")
 		for i, s := range split {

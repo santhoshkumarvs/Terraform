@@ -75,8 +75,8 @@ func (n *NodeDestroyResource) References() []string {
 			// We include conn info and config for destroy time provisioners
 			// as dependencies that we have.
 			if p.When == config.ProvisionerWhenDestroy {
-				result = append(result, ReferencesFromConfig(p.ConnInfo)...)
-				result = append(result, ReferencesFromConfig(p.RawConfig)...)
+				result = append(result, ReferencesFromConfig(p.ConnInfo, nil)...)
+				result = append(result, ReferencesFromConfig(p.RawConfig, nil)...)
 			}
 		}
 
