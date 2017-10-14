@@ -16,12 +16,7 @@ type EvalInterpolate struct {
 }
 
 func (n *EvalInterpolate) Eval(ctx EvalContext) (interface{}, error) {
-	var schema *configschema.Block
-	if n.Schema != nil {
-		schema = *n.Schema
-	}
-
-	rc, err := ctx.Interpolate(n.Config, n.Resource, schema)
+	rc, err := ctx.Interpolate(n.Config, n.Resource, n.Schema)
 	if err != nil {
 		if n.ContinueOnErr {
 			return nil, EvalEarlyExitError{}

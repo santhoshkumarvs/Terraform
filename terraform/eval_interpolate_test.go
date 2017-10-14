@@ -50,7 +50,7 @@ func TestEvalInterpolateWithSchema(t *testing.T) {
 	n := &EvalInterpolate{
 		Config: config,
 		Output: &got,
-		Schema: &schema,
+		Schema: schema,
 	}
 	result := testResourceConfig(t, map[string]interface{}{})
 	ctx := &MockEvalContext{InterpolateConfigResult: result}

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/hashicorp/terraform/tfdiags"
+
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 
@@ -213,34 +215,37 @@ func (r *RawConfig) RequiresSchema() bool {
 //
 // This method should be used only if RequiresSchema returns true. Otherwise,
 // use Interpolate.
-func (r *RawConfig) InterpolateWithSchema(schema *configschema.Block, vs map[string]ast.Variable) error {
+func (r *RawConfig) InterpolateWithSchema(schema *configschema.Block, vals map[string]cty.Value) tfdiags.Diagnostics {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	if !r.RequiresSchema() {
-		return r.Interpolate(vs)
+		return tfdiags.Diagnostics(nil).Append(
+			errors.New("InterpolateWithSchema called on RawConfig that does not support schema; this is a bug in Terraform that should be reported"),
+		)
 	}
 
+	var diags tfdiags.Diagnostics
+
 	ctx := &hcl2.EvalContext{
-		Variables: map[string]cty.Value{},
+		Variables: vals,
 		Functions: hcl2InterpolationFuncs(),
 	}
 
-	// TODO: Convert "vs" into ctx.Variables
-
 	spec := schema.DecoderSpec()
-	val, diags := hcl2dec.Decode(r.Body, spec, ctx)
+	val, decDiags := hcl2dec.Decode(r.Body, spec, ctx)
+	diags = diags.Append(decDiags)
 
-	// We only return diags if it has errors, since we don't want to accidentally
-	// treat isolated warnings as errors. This means that we can return warnings
-	// only when accompanied by at least one error.
 	if diags.HasErrors() {
+		// abort early
 		return diags
 	}
 
 	if !val.Type().IsObjectType() {
 		// should never happen, because a configschema.Block always decodes to an object
-		return fmt.Errorf("configuration decoding produced %s, rather than object as expected", val.Type())
+		return tfdiags.Diagnostics(nil).Append(
+			fmt.Errorf("configuration decoding produced %s, rather than object as expected", val.Type()),
+		)
 	}
 
 	r.config = hcl2shim.ConfigValueFromHCL2(val).(map[string]interface{})
@@ -253,7 +258,7 @@ func (r *RawConfig) InterpolateWithSchema(schema *configschema.Block, vs map[str
 		}
 	}
 
-	return nil
+	return diags
 }
 
 // Merge merges another RawConfig into this one (overriding any conflicting

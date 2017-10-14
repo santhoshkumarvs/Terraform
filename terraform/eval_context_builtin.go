@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/terraform/tfdiags"
+
 	"github.com/hashicorp/terraform/config"
 	"github.com/hashicorp/terraform/config/configschema"
 )
@@ -291,6 +293,7 @@ func (ctx *BuiltinEvalContext) CloseProvisioner(n string) error {
 func (ctx *BuiltinEvalContext) Interpolate(
 	cfg *config.RawConfig, r *Resource, schema *configschema.Block,
 ) (*ResourceConfig, error) {
+
 	if cfg.RequiresSchema() {
 		// Experimental HCL2 codepath
 		return ctx.interpolateWithSchema(cfg, r, schema)
@@ -327,19 +330,30 @@ func (ctx *BuiltinEvalContext) interpolateWithSchema(
 		return nil, fmt.Errorf("this configuration block requires a schema, but one is not available")
 	}
 
+	var diags tfdiags.Diagnostics
+
 	scope := &InterpolationScope{
 		Path:     ctx.Path(),
 		Resource: r,
 	}
 
-	vs, err := ctx.Interpolater.Values(scope, cfg.Variables)
-	if err != nil {
-		return nil, err
+	spec := schema.DecoderSpec()
+	vs, varsDiags := config.DetectVariablesHCL2(cfg.Body, spec)
+	diags = append(diags, varsDiags...)
+	if varsDiags.HasErrors() {
+		return nil, diags.Err()
 	}
 
-	// Do the interpolation
-	if err := cfg.InterpolateWithSchema(schema, vs); err != nil {
-		return nil, err
+	vals, valsDiags := ctx.Interpolater.ValuesCty(scope, vs)
+	diags = append(diags, valsDiags...)
+	if valsDiags.HasErrors() {
+		return nil, diags.Err()
+	}
+
+	evalDiags := cfg.InterpolateWithSchema(schema, vals)
+	diags = append(diags, evalDiags...)
+	if evalDiags.HasErrors() {
+		return nil, diags.Err()
 	}
 
 	result := NewResourceConfig(cfg)

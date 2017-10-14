@@ -113,6 +113,7 @@ func (n *NodeValidatableResourceInstance) EvalTree() EvalNode {
 			},
 			&EvalInterpolate{
 				Config:   n.Config.RawConfig.Copy(),
+				Schema:   n.Schema,
 				Resource: resource,
 				Output:   &config,
 			},

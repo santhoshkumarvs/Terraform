@@ -75,6 +75,7 @@ func (n *NodePlannableResourceInstance) evalTreeDataResource(
 			// "requires new resource" diffs.
 			&EvalInterpolate{
 				Config:   n.Config.RawConfig.Copy(),
+				Schema:   n.Schema,
 				Resource: resource,
 				Output:   &config,
 			},
@@ -139,6 +140,7 @@ func (n *NodePlannableResourceInstance) evalTreeManagedResource(
 		Nodes: []EvalNode{
 			&EvalInterpolate{
 				Config:   n.Config.RawConfig.Copy(),
+				Schema:   n.Schema,
 				Resource: resource,
 				Output:   &resourceConfig,
 			},

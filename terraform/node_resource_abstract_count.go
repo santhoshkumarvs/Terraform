@@ -32,7 +32,7 @@ func (n *NodeAbstractCountResource) EvalTree() EvalNode {
 			// into the proper number of instances.
 			&EvalInterpolate{
 				Config: n.Config.RawCount,
-				Schema: &evalValidateCountSchema,
+				Schema: evalValidateCountSchema,
 			},
 
 			// Check if the count is computed

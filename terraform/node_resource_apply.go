@@ -130,6 +130,7 @@ func (n *NodeApplyableResource) evalTreeDataResource(
 			// apply pass that weren't known when the diff was produced.
 			&EvalInterpolate{
 				Config:   n.Config.RawConfig.Copy(),
+				Schema:   n.Schema,
 				Resource: resource,
 				Output:   &config,
 			},
@@ -238,6 +239,7 @@ func (n *NodeApplyableResource) evalTreeManagedResource(
 
 			&EvalInterpolate{
 				Config:   n.Config.RawConfig.Copy(),
+				Schema:   n.Schema,
 				Resource: resource,
 				Output:   &resourceConfig,
 			},
