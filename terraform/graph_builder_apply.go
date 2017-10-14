@@ -28,6 +28,9 @@ type ApplyGraphBuilder struct {
 	// Provisioners is the list of provisioners supported.
 	Provisioners []string
 
+	// Schemas contains schemas for the configurations of various objects.
+	Schemas *Schemas
+
 	// Targets are resources to target. This is only required to make sure
 	// unnecessary outputs aren't included in the apply graph. The plan
 	// builder successfully handles targeting resources. In the future,

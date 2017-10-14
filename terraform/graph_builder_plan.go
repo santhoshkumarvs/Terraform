@@ -31,6 +31,9 @@ type PlanGraphBuilder struct {
 	// Provisioners is the list of provisioners supported.
 	Provisioners []string
 
+	// Schemas contains schemas for the configurations of various objects.
+	Schemas *Schemas
+
 	// Targets are resources to target
 	Targets []string
 

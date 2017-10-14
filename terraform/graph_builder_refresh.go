@@ -30,6 +30,9 @@ type RefreshGraphBuilder struct {
 	// Providers is the list of providers supported.
 	Providers []string
 
+	// Schemas contains schemas for the configurations of various objects.
+	Schemas *Schemas
+
 	// Targets are resources to target
 	Targets []string
 

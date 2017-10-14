@@ -112,6 +112,9 @@ type Context struct {
 	runContext          context.Context
 	runContextCancel    context.CancelFunc
 	shadowErr           error
+
+	// populated on first call to the schemas method (in context_schemas.go)
+	schemasCache *Schemas
 }
 
 // NewContext creates a new Context structure.
@@ -249,6 +252,7 @@ func (c *Context) Graph(typ GraphType, opts *ContextGraphOpts) (*Graph, error) {
 			State:        c.state,
 			Providers:    c.components.ResourceProviders(),
 			Provisioners: c.components.ResourceProvisioners(),
+			Schemas:      c.schemas(),
 			Targets:      c.targets,
 			Destroy:      c.destroy,
 			Validate:     opts.Validate,
@@ -266,6 +270,7 @@ func (c *Context) Graph(typ GraphType, opts *ContextGraphOpts) (*Graph, error) {
 			Module:    c.module,
 			State:     c.state,
 			Providers: c.components.ResourceProviders(),
+			Schemas:   c.schemas(),
 			Targets:   c.targets,
 			Validate:  opts.Validate,
 		}
@@ -297,6 +302,7 @@ func (c *Context) Graph(typ GraphType, opts *ContextGraphOpts) (*Graph, error) {
 			Module:    c.module,
 			State:     c.state,
 			Providers: c.components.ResourceProviders(),
+			Schemas:   c.schemas(),
 			Targets:   c.targets,
 			Validate:  opts.Validate,
 		}).Build(RootModulePath)
@@ -803,6 +809,7 @@ func (c *Context) walk(graph *Graph, operation walkOperation) (*ContextGraphWalk
 		Context:     realCtx,
 		Operation:   operation,
 		StopContext: c.runContext,
+		Schemas:     c.schemas(),
 	}
 
 	// Watch for a stop so we can call the provider Stop() API.

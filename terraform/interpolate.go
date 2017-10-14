@@ -27,6 +27,7 @@ type Interpolater struct {
 	Operation          walkOperation
 	Meta               *ContextMeta
 	Module             *module.Tree
+	Schemas            *Schemas
 	State              *State
 	StateLock          *sync.RWMutex
 	VariableValues     map[string]interface{}

@@ -19,6 +19,7 @@ type ContextGraphWalker struct {
 	Context     *Context
 	Operation   walkOperation
 	StopContext context.Context
+	Schemas     *Schemas
 
 	// Outputs, do not set these. Do not read these while the graph
 	// is being walked.
@@ -90,6 +91,7 @@ func (w *ContextGraphWalker) EnterPath(path []string) EvalContext {
 			StateLock:          &w.Context.stateLock,
 			VariableValues:     variables,
 			VariableValuesLock: &w.interpolaterVarLock,
+			Schemas:            w.Schemas,
 		},
 		InterpolaterVars:    w.interpolaterVars,
 		InterpolaterVarLock: &w.interpolaterVarLock,
