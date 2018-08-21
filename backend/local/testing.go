@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform/backend"
+	"github.com/hashicorp/terraform/providers"
 	"github.com/hashicorp/terraform/states/statemgr"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/hashicorp/terraform/tfdiags"
@@ -72,9 +73,9 @@ func TestLocalProvider(t *testing.T, b *Local, name string, schema *terraform.Pr
 	}
 
 	// Setup our provider
-	b.ContextOpts.ProviderResolver = terraform.ResourceProviderResolverFixed(
-		map[string]terraform.ResourceProviderFactory{
-			name: terraform.ResourceProviderFactoryFixed(p),
+	b.ContextOpts.ProviderResolver = providers.ResolverFixed(
+		map[string]providers.Factory{
+			name: providers.FactoryFixed(p),
 		},
 	)
 

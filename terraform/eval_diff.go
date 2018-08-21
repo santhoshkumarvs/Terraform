@@ -12,8 +12,10 @@ import (
 	"github.com/hashicorp/terraform/addrs"
 	"github.com/hashicorp/terraform/configs"
 	"github.com/hashicorp/terraform/plans"
+	"github.com/hashicorp/terraform/plans/objchange"
 	"github.com/hashicorp/terraform/providers"
 	"github.com/hashicorp/terraform/states"
+	"github.com/hashicorp/terraform/tfdiags"
 )
 
 // EvalCompareDiff is an EvalNode implementation that compares two diffs
@@ -96,143 +98,125 @@ type EvalDiff struct {
 
 // TODO: test
 func (n *EvalDiff) Eval(ctx EvalContext) (interface{}, error) {
-	return nil, fmt.Errorf("EvalDiff not yet updated for new state and plan types")
-	/*
-		state := *n.State
-		config := *n.Config
-		provider := *n.Provider
-		providerSchema := *n.ProviderSchema
+	state := *n.State
+	config := *n.Config
+	provider := *n.Provider
+	providerSchema := *n.ProviderSchema
 
-		if providerSchema == nil {
-			return nil, fmt.Errorf("provider schema is unavailable for %s", n.Addr)
-		}
+	if providerSchema == nil {
+		return nil, fmt.Errorf("provider schema is unavailable for %s", n.Addr)
+	}
 
-		var diags tfdiags.Diagnostics
+	var diags tfdiags.Diagnostics
 
-		// The provider and hook APIs still expect our legacy InstanceInfo type.
-		legacyInfo := NewInstanceInfo(n.Addr.Absolute(ctx.Path()))
+	absAddr := n.Addr.Absolute(ctx.Path())
+	priorVal := state.Value
 
-		// State still uses legacy-style internal ids, so we need to shim to get
-		// a suitable key to use.
-		stateId := NewLegacyResourceInstanceAddress(n.Addr.Absolute(ctx.Path())).stateId()
+	// Evaluate the configuration
+	schema := providerSchema.ResourceTypes[n.Addr.Resource.Type]
+	if schema == nil {
+		// Should be caught during validation, so we don't bother with a pretty error here
+		return nil, fmt.Errorf("provider does not support resource type %q", n.Addr.Resource.Type)
+	}
+	keyData := EvalDataForInstanceKey(n.Addr.Key)
+	configVal, _, configDiags := ctx.EvaluateBlock(config.Config, schema, nil, keyData)
+	diags = diags.Append(configDiags)
+	if configDiags.HasErrors() {
+		return nil, diags.Err()
+	}
 
-		// Call pre-diff hook
-		if !n.Stub {
-			err := ctx.Hook(func(h Hook) (HookAction, error) {
-				return h.PreDiff(legacyInfo, state)
-			})
-			if err != nil {
-				return nil, err
-			}
-		}
+	proposedNewVal := objchange.ProposedNewObject(schema, priorVal, configVal)
 
-		// The state for the diff must never be nil
-		diffState := state
-		if diffState == nil {
-			diffState = new(InstanceState)
-		}
-		diffState.init()
+	// filter out ignored attributes
+	// TODO: Update ignore_changes handling for new change model
+	/*if err := n.processIgnoreChanges(diff); err != nil {
+		return nil, err
+	}*/
 
-		// Evaluate the configuration
-		schema := providerSchema.ResourceTypes[n.Addr.Resource.Type]
-		if schema == nil {
-			// Should be caught during validation, so we don't bother with a pretty error here
-			return nil, fmt.Errorf("provider does not support resource type %q", n.Addr.Resource.Type)
-		}
-		keyData := EvalDataForInstanceKey(n.Addr.Key)
-		configVal, _, configDiags := ctx.EvaluateBlock(config.Config, schema, nil, keyData)
-		diags = diags.Append(configDiags)
-		if configDiags.HasErrors() {
-			return nil, diags.Err()
-		}
-
-		// The provider API still expects our legacy ResourceConfig type.
-		legacyRC := NewResourceConfigShimmed(configVal, schema)
-
-		// Diff!
-		diff, err := provider.Diff(legacyInfo, diffState, legacyRC)
-		if err != nil {
-			return nil, err
-		}
-		if diff == nil {
-			diff = new(InstanceDiff)
-		}
-
-		// Set DestroyDeposed if we have deposed instances
-		_, err = readInstanceFromState(ctx, stateId, nil, func(rs *ResourceState) (*InstanceState, error) {
-			if len(rs.Deposed) > 0 {
-				diff.DestroyDeposed = true
-			}
-
-			return nil, nil
+	// Call pre-diff hook
+	if !n.Stub {
+		err := ctx.Hook(func(h Hook) (HookAction, error) {
+			return h.PreDiff(absAddr, states.CurrentGen, priorVal, proposedNewVal)
 		})
 		if err != nil {
 			return nil, err
 		}
+	}
 
-		// Preserve the DestroyTainted flag
-		if n.PreviousDiff != nil {
-			diff.SetTainted((*n.PreviousDiff).GetDestroyTainted())
-		}
+	// The provider gets an opportunity to customize the proposed new value,
+	// which in turn produces the _planned_ new value.
+	resp := provider.PlanResourceChange(providers.PlanResourceChangeRequest{
+		TypeName:         n.Addr.Resource.Type,
+		Config:           configVal,
+		PriorState:       priorVal,
+		ProposedNewState: proposedNewVal,
+		PriorPrivate:     state.Private,
+	})
+	diags = diags.Append(resp.Diagnostics.InConfigBody(config.Config))
+	if diags.HasErrors() {
+		return nil, diags.Err()
+	}
 
-		// Require a destroy if there is an ID and it requires new.
-		if diff.RequiresNew() && state != nil && state.ID != "" {
-			diff.SetDestroy(true)
-		}
+	plannedNewVal := resp.PlannedState
 
-		// If we're creating a new resource, compute its ID
-		if diff.RequiresNew() || state == nil || state.ID == "" {
-			var oldID string
-			if state != nil {
-				oldID = state.Attributes["id"]
-			}
+	// TODO: Check that plannedNewVal is consistent with proposedNewVal,
+	// in that it changes it only in ways that don't conflict with the
+	// given configuration.
 
-			// Add diff to compute new ID
-			diff.init()
-			diff.SetAttribute("id", &ResourceAttrDiff{
-				Old:         oldID,
-				NewComputed: true,
-				RequiresNew: true,
-				Type:        DiffAttrOutput,
-			})
-		}
+	eqV := plannedNewVal.Equals(priorVal)
+	eq := eqV.IsKnown() && eqV.True()
 
-		// filter out ignored attributes
-		if err := n.processIgnoreChanges(diff); err != nil {
+	var action plans.Action
+	switch {
+	case priorVal.IsNull():
+		action = plans.Create
+	case eq:
+		action = plans.NoOp
+	case len(resp.RequiresReplace) > 0:
+		action = plans.Replace
+	default:
+		action = plans.Update
+		// "Delete" is never chosen here, because deletion plans are always
+		// created more directly elsewhere, such as in "orphan" handling.
+	}
+
+	// Call post-refresh hook
+	if !n.Stub {
+		err := ctx.Hook(func(h Hook) (HookAction, error) {
+			return h.PostDiff(absAddr, states.CurrentGen, action, priorVal, plannedNewVal)
+		})
+		if err != nil {
 			return nil, err
 		}
+	}
 
-		// Call post-refresh hook
-		if !n.Stub {
-			err = ctx.Hook(func(h Hook) (HookAction, error) {
-				return h.PostDiff(legacyInfo, diff)
-			})
-			if err != nil {
-				return nil, err
-			}
+	// Update our output if we care
+	if n.OutputChange != nil {
+		*n.OutputChange = &plans.ResourceInstanceChange{
+			Addr:    absAddr,
+			Private: resp.PlannedPrivate,
+			// ProviderAddr: providerAddr, TODO: Make the resolved provider address available here
+			Change: plans.Change{
+				Action: action,
+				Before: priorVal,
+				After:  plannedNewVal,
+			},
 		}
+	}
 
-		// Update our output if we care
-		if n.OutputDiff != nil {
-			*n.OutputDiff = diff
+	if n.OutputValue != nil {
+		*n.OutputValue = configVal
+	}
+
+	// Update the state if we care
+	if n.OutputState != nil {
+		*n.OutputState = &states.ResourceInstanceObject{
+			Status: states.ObjectReady,
+			Value:  plannedNewVal,
 		}
+	}
 
-		if n.OutputValue != nil {
-			*n.OutputValue = configVal
-		}
-
-		// Update the state if we care
-		if n.OutputState != nil {
-			*n.OutputState = state
-
-			// Merge our state so that the state is updated with our plan
-			if !diff.Empty() && n.OutputState != nil {
-				*n.OutputState = state.MergeDiff(diff)
-			}
-		}
-
-		return nil, nil
-	*/
+	return nil, nil
 }
 
 func (n *EvalDiff) processIgnoreChanges(diff *InstanceDiff) error {

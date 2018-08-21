@@ -150,6 +150,7 @@ func (n *graphNodeDeposedResource) EvalTree() EvalNode {
 				},
 				&EvalApply{
 					Addr:     addr.Resource,
+					Config:   nil, // No configuration because we are destroying
 					State:    &state,
 					Change:   &change,
 					Provider: &provider,
